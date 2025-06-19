@@ -2,32 +2,86 @@ package com.cpbank.AML_API.services;
 
 import com.cpbank.AML_API.models.AMLRequest;
 import com.cpbank.AML_API.models.AMLResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 @Service
 public class AMLService {
+    Logger logger = LoggerFactory.getLogger(AMLService.class);
     @Autowired
-    private RestTemplateBuilder restTemplate;
+    private RestTemplate restTemplate;
 
-    public AMLResponse getRiskLevel(AMLRequest request) {
-        String url = "https://data-uat-intuition.cambodiapostbank.com.kh/api/v1/f4a10790-2f67-457a-ac0f-04f3f10ac583/dataSets/5c464510-2087-4bb2-b91e-ae04c080ddc2/documents?runStrategy=true&includeDetail=true";
-        System.out.println("after string url");
+    @Value("${aml.org.url}")
+    private String url;
+
+    @Value("${aml.org.token}")
+    private String bearerToken;
+
+    public AMLResponse PostCustomer(AMLRequest request) throws IOException,NullPointerException {
+        AMLResponse response = new AMLResponse();
+        try {
+            logger.info("Hi 01");
+            ObjectMapper objectMapper = new ObjectMapper();
+            String json = objectMapper.writeValueAsString(request);
+            logger.info("AML original Request : {}", json);
+
+            logger.info("Hi 02");
+
+            HttpHeaders headers = createHeaders(bearerToken);
+
+            logger.info("Hi 03");
+
+            HttpEntity<AMLRequest> entity = new HttpEntity<>(request,headers);
+
+            logger.info("Hi 04");
+
+
+            String res_str = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    String.class)
+                    .getBody();
+
+            logger.info("Hi 05");
+            response = objectMapper.readValue(res_str, AMLResponse.class);
+            logger.info("AML original Response : {}", res_str);
+            logger.info("Middle Response Mapping : {} ", response);
+            return response;
+        }catch (Exception e){
+            logger.info("Hourng 02 : {} ", e);
+
+            System.out.println(e.getMessage());
+
+            return null;
+        }
+
+    }
+    private HttpHeaders createHeaders(String bearerToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
 
-        HttpEntity<AMLRequest> entity = new HttpEntity<>(request, headers);
-        System.out.println("this entity===>"+entity);
-        ResponseEntity<AMLResponse> response = restTemplate.build().exchange(url, HttpMethod.POST, entity, AMLResponse.class);
+        if (bearerToken != null && !bearerToken.trim().isEmpty()) {
+            headers.set("Authorization", "Bearer " + bearerToken);
+        }
 
-        System.out.println("this response====>"+response);
-
-        return response.getBody();
+        return headers;
     }
 }

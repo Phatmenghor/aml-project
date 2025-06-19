@@ -44,12 +44,14 @@ public class AMLRequest {
     private String BUSINESS_SECTOR;
     @JsonProperty("TARGET")
     private String TARGET;
+    @JsonProperty("INCOME")
+    private Double INCOME;
     @JsonProperty("DOBYear")
-    private String DOBYear;
+    private Integer DOBYear;
     @JsonProperty("DOBMonth")
-    private String DOBMonth;
+    private Integer DOBMonth;
     @JsonProperty("DOBDay")
-    private String DOBDay;
+    private Integer DOBDay;
     @JsonProperty("LEGAL_DOC_NAME")
     private String LEGAL_DOC_NAME;
     @JsonProperty("LEGAL_EXP_DATE")
