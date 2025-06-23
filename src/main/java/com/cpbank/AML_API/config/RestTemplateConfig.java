@@ -20,7 +20,7 @@ import java.security.KeyStore;
 public class RestTemplateConfig {
 
 
-    @Value("${ssl.keystore.path:amluat-keystore.p12}")
+    @Value("${ssl.keystore.path:aml-keystore.p12}")
     private Resource keystoreResource;
 
     @Value("${ssl.keystore.password:P@ssw0rd}")

@@ -36,20 +36,20 @@ public class AMLService {
     public AMLResponse PostCustomer(AMLRequest request) throws IOException,NullPointerException {
         AMLResponse response = new AMLResponse();
         try {
-            logger.info("Hi 01");
+
             ObjectMapper objectMapper = new ObjectMapper();
             String json = objectMapper.writeValueAsString(request);
             logger.info("AML original Request : {}", json);
 
-            logger.info("Hi 02");
+
 
             HttpHeaders headers = createHeaders(bearerToken);
 
-            logger.info("Hi 03");
+
 
             HttpEntity<AMLRequest> entity = new HttpEntity<>(request,headers);
 
-            logger.info("Hi 04");
+
 
 
             String res_str = restTemplate.exchange(
@@ -59,13 +59,13 @@ public class AMLService {
                     String.class)
                     .getBody();
 
-            logger.info("Hi 05");
+
             response = objectMapper.readValue(res_str, AMLResponse.class);
             logger.info("AML original Response : {}", res_str);
             logger.info("Middle Response Mapping : {} ", response);
             return response;
         }catch (Exception e){
-            logger.info("Hourng 02 : {} ", e);
+            logger.info("error exception : {} ", e);
 
             System.out.println(e.getMessage());
 
