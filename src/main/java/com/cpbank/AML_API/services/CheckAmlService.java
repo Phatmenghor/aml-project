@@ -8,46 +8,48 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.http.HttpEntity;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 
 @Service
-public class AMLService {
-    Logger logger = LoggerFactory.getLogger(AMLService.class);
-    @Autowired
-    private ReadJson readJson;
+public class CheckAmlService {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private ReadJson readJson;
     @Value("${aml.org.url}")
     private String url;
 
     @Value("${aml.org.token}")
     private String bearerToken;
+    Logger logger = LoggerFactory.getLogger(CheckAmlService.class);
 
-    public AMLResponse PostCustomer(AMLRequest request) throws IOException,NullPointerException {
+    public AMLResponse PostCustomer(AMLRequest request, String bearerToken) throws IOException {
         AMLResponse response = new AMLResponse();
         try {
+//            ReadJson hah=new ReadJson();
+            String trxnId = ZonedDateTime.now(ZoneId.of("Asia/Phnom_Penh"))
+                    .format(DateTimeFormatter.ofPattern("yyMMddHHmmssSSS"));
             System.out.println("b4 check");
             boolean isBypass = readJson.readByPassAml();
-            System.out.println("after check");
+            System.out.println("after  check");
             if (isBypass) {
                 logger.info("Bypass AML check is enabled. Returning mock response...");
 
-                response.setServiceName("Intuition in endpoint aml");
-                response.setTrxnID(request.getCUSTOMER_ID());
+                response.setServiceName("Intuition");
+                response.setTrxnID(trxnId);
                 response.setActionTaken(null);
                 response.setTotalRulesScore(0);
                 response.setRiskLevel("Low");
@@ -56,32 +58,33 @@ public class AMLService {
                 return response;
             }
 
+
+
             ObjectMapper objectMapper = new ObjectMapper();
             String json = objectMapper.writeValueAsString(request);
-            logger.info("AML original Request : {}", json);
+
             HttpHeaders headers = createHeaders(bearerToken);
-            HttpEntity<AMLRequest> entity = new HttpEntity<>(request,headers);
+            HttpEntity<AMLRequest> entity = new HttpEntity<>(request, headers);
+
             String res_str = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
                     entity,
-                    String.class)
-                    .getBody();
+                    String.class
+            ).getBody();
 
-            logger.info("Hi 05");
             response = objectMapper.readValue(res_str, AMLResponse.class);
+
             logger.info("AML original Response : {}", res_str);
-            logger.info("Middle Response Mapping : {} ", response);
-            return response;
-        }catch (Exception e){
-            logger.info("Hourng 02 : {} ", e);
+            logger.info("Middle Response Mapping : {}", response);
 
-            System.out.println(e.getMessage());
-
-            return null;
+        } catch (Exception e) {
+            logger.error("Error calling AML API: {}", e.getMessage(), e);
         }
 
+        return response;
     }
+
     private HttpHeaders createHeaders(String bearerToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

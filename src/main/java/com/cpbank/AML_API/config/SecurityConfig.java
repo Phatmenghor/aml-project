@@ -39,7 +39,9 @@ public class SecurityConfig {
         http
                 .csrf().disable()
                 .authorizeRequests()
-                .antMatchers("/api/**").authenticated()
+                .antMatchers("/api/aml-check").permitAll()
+
+                .antMatchers("/api/aml").authenticated()
                 .anyRequest().permitAll()
                 .and()
                 .httpBasic()
