@@ -105,9 +105,11 @@ public class AMLService {
         }
 
         // 1. Call SOAP Service (Soup API) - Always happens
+        // 1. Call SOAP Service (Soup API) - Always happens
         String soapResponse = sendToSoapService(request);
         Map<String, Object> resultMap = new java.util.HashMap<>();
-        resultMap.put("soapResponse", soapResponse);
+        // Parse XML string to Map object
+        resultMap.put("soapResponse", com.cpbank.AML_API.helper.XmlParserHelper.parseSoapXml(soapResponse));
         
         // Check for T24 or other app types
         String customerId = request.getCustomerId();
