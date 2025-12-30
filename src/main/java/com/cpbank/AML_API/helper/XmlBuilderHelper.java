@@ -1,11 +1,22 @@
 package com.cpbank.AML_API.helper;
 
 import com.cpbank.AML_API.model.AmlUpdateRequest;
-import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
+@Component
 public class XmlBuilderHelper {
 
-    public static String constructSoapPayload(AmlUpdateRequest request) {
+    @Value("${aml.company}")
+    private String company;
+
+    @Value("${aml.username}")
+    private String username;
+
+    @Value("${aml.password}")
+    private String password;
+
+    public String constructSoapPayload(AmlUpdateRequest request) {
         String rulesXml = "";
         if (request.getRuleTriggered() != null) {
             StringBuilder rulesBuilder = new StringBuilder();
@@ -21,9 +32,9 @@ public class XmlBuilderHelper {
                         "   <soapenv:Body>\n" +
                         "      <cpb:WSAMLUPD>\n" +
                         "         <WebRequestCommon>\n" +
-                        "            <company>KH0010001</company>\n" +
-                        "            <password>HOurng@11</password>\n" +
-                        "            <userName>L.HOURNG</userName>\n" +
+                        "            <company>%s</company>\n" +
+                        "            <password>%s</password>\n" +
+                        "            <userName>%s</userName>\n" +
                         "         </WebRequestCommon>\n" +
                         "         <OfsFunction>\n" +
                         "            <noOfAuth>0</noOfAuth>\n" +
@@ -42,6 +53,9 @@ public class XmlBuilderHelper {
                         "      </cpb:WSAMLUPD>\n" +
                         "   </soapenv:Body>\n" +
                         "</soapenv:Envelope>",
+                company,
+                password,
+                username,
                 request.getCustomerId(),
                 request.getServiceName(),
                 request.getRiskLevel(),

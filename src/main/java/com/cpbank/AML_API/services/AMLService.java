@@ -6,6 +6,7 @@ import com.cpbank.AML_API.model.AMLRequest;
 import com.cpbank.AML_API.model.AMLResponse;
 import com.cpbank.AML_API.helper.XmlBuilderHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
@@ -32,6 +33,7 @@ import java.net.URL;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class AMLService {
     Logger logger = LoggerFactory.getLogger(AMLService.class);
     @Autowired
@@ -57,6 +59,8 @@ public class AMLService {
 
     @Value("${aml.downstream.oao.secret-key}")
     private String oaoSecretKey;
+
+    private final XmlBuilderHelper xmlBuilderHelper;
 
     public AMLResponse PostCustomer(AMLRequest request) throws IOException,NullPointerException {
         AMLResponse response = new AMLResponse();
@@ -122,7 +126,7 @@ public class AMLService {
     private boolean sendToSoapService(AmlUpdateRequest request) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpPost httpPost = new HttpPost(amlSoapUrl);
-            httpPost.setEntity(new StringEntity(XmlBuilderHelper.constructSoapPayload(request), ContentType.TEXT_XML));
+            httpPost.setEntity(new StringEntity(xmlBuilderHelper.constructSoapPayload(request), ContentType.TEXT_XML));
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 if (response.getCode() == 200) {
