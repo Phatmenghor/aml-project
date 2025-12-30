@@ -6,8 +6,9 @@ import lombok.Data;
 public class AmlUpdateResponse {
     private String status;
     private String message;
-    private String downstreamApp;
-    private String downstreamResponse;
+    private String appResponse;
+    private String appType;
+    private Object result;
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
@@ -15,9 +16,12 @@ public class AmlUpdateResponse {
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
 
-    public String getDownstreamApp() { return downstreamApp; }
-    public void setDownstreamApp(String downstreamApp) { this.downstreamApp = downstreamApp; }
+    public String getAppResponse() { return appResponse; }
+    public void setAppResponse(String appResponse) { this.appResponse = appResponse; }
 
-    public String getDownstreamResponse() { return downstreamResponse; }
-    public void setDownstreamResponse(String downstreamResponse) { this.downstreamResponse = downstreamResponse; }
+    public String getAppType() { return appType; }
+    public void setAppType(String appType) { this.appType = appType; }
+
+    public Object getResult() { return result; }
+    public void setResult(Object result) { this.result = result; }
 }
