@@ -1,7 +1,9 @@
 package com.cpbank.AML_API.Controller;
 
-import com.cpbank.AML_API.models.AMLRequest;
-import com.cpbank.AML_API.models.AMLResponse;
+import com.cpbank.AML_API.model.AmlUpdateRequest;
+import com.cpbank.AML_API.model.AmlUpdateResponse;
+import com.cpbank.AML_API.model.AMLRequest;
+import com.cpbank.AML_API.model.AMLResponse;
 import com.cpbank.AML_API.services.AMLService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +21,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@Slf4j
 public class AMLController {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AMLController.class);
 
     @Autowired
     private AMLService amlService;
@@ -43,6 +46,12 @@ public class AMLController {
                     request.getCUSTOMER_ID(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
+    }
+
+    @PostMapping("/aml-update")
+    public ResponseEntity<AmlUpdateResponse> AmlUpdate(@RequestBody AmlUpdateRequest request) {
+        AmlUpdateResponse response = amlService.processAmlUpdate(request);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/health")
