@@ -3,6 +3,7 @@ package com.cpbank.AML_API.services;
 import com.cpbank.AML_API.dto.AmlUpdateRequest;
 import com.cpbank.AML_API.constant.AppConstant;
 import com.cpbank.AML_API.dto.AmlUpdateResponse;
+import com.cpbank.AML_API.dto.AmlUpdateResult;
 import com.cpbank.AML_API.dto.AMLRequest;
 import com.cpbank.AML_API.dto.AMLResponse;
 import com.cpbank.AML_API.dto.OaoDownstreamRequest;
@@ -96,9 +97,11 @@ public class AMLService {
         try {
             // 1. Call SOAP Service (Soup API) - Always happens
             String soapResponse = sendToSoapService(request);
-            Map<String, Object> resultMap = new java.util.HashMap<>();
-            resultMap.put("soapResponse", XmlParserHelper.parseSoapXml(soapResponse));
-            response.setResult(resultMap);
+            Map<String, Object> rawMap = XmlParserHelper.parseSoapXml(soapResponse);
+            
+            // Map to DTO
+            AmlUpdateResult resultDto = mapToAmlUpdateResult(rawMap);
+            response.setResult(resultDto);
 
             // 2. Determine App Type
             String appType = determineAppType(request.getCustomerId());
@@ -252,5 +255,62 @@ public class AMLService {
         } catch (Exception e) {
             log.error("Error saving log", e);
         }
+    }
+
+    private com.cpbank.AML_API.dto.AmlUpdateResult mapToAmlUpdateResult(Map<String, Object> map) {
+        com.cpbank.AML_API.dto.AmlUpdateResult result = new com.cpbank.AML_API.dto.AmlUpdateResult();
+        
+        try {
+            // Traverse to find TUWSAMLSRVHNDLType
+            // The structure is typically Envelope -> Body -> WSAMLUPDResponse -> TUWSAMLSRVHNDLType
+            // But XmlParserHelper might have unwrapped Envelope/Body if they were single children
+            
+            Map<String, Object> targetMap = map;
+
+            // Navigate down if needed
+            if (targetMap.containsKey("WSAMLUPDResponse")) {
+                 Object val = targetMap.get("WSAMLUPDResponse");
+                 if(val instanceof Map) targetMap = (Map<String, Object>) val;
+            }
+            
+            if (targetMap.containsKey("TUWSAMLSRVHNDLType")) {
+                 Object val = targetMap.get("TUWSAMLSRVHNDLType");
+                 if(val instanceof Map) targetMap = (Map<String, Object>) val;
+            }
+
+            // Map fields
+            if (targetMap.containsKey("id")) result.setId((String) targetMap.get("id"));
+            if (targetMap.containsKey("CUSTID")) result.setCUSTID((String) targetMap.get("CUSTID"));
+            if (targetMap.containsKey("SRVNAME")) result.setSRVNAME((String) targetMap.get("SRVNAME"));
+            if (targetMap.containsKey("RISKLVL")) result.setRISKLVL((String) targetMap.get("RISKLVL"));
+            if (targetMap.containsKey("ACTNTAKN")) result.setACTNTAKN((String) targetMap.get("ACTNTAKN"));
+            
+            if (targetMap.containsKey("gRULETRG")) {
+                Object grule = targetMap.get("gRULETRG");
+                if (grule instanceof Map) {
+                    Map<String, Object> gMap = (Map<String, Object>) grule;
+                    com.cpbank.AML_API.dto.AmlUpdateResult.GRULETRG gObj = new com.cpbank.AML_API.dto.AmlUpdateResult.GRULETRG();
+                    if (gMap.containsKey("RULETRG")) {
+                        Object ruleContent = gMap.get("RULETRG");
+                        if (ruleContent instanceof String) {
+                            gObj.setRULETRG(java.util.Collections.singletonList((String) ruleContent));
+                        } else if (ruleContent instanceof java.util.List) {
+                            gObj.setRULETRG((java.util.List<String>) ruleContent);
+                        }
+                    }
+                    result.setGRULETRG(gObj);
+                }
+            }
+
+            if (targetMap.containsKey("TXNID")) result.setTXNID((String) targetMap.get("TXNID"));
+            if (targetMap.containsKey("TOTRSCR")) result.setTOTRSCR((String) targetMap.get("TOTRSCR"));
+            if (targetMap.containsKey("RETCODE")) result.setRETCODE((String) targetMap.get("RETCODE"));
+            if (targetMap.containsKey("RETDESC")) result.setRETDESC((String) targetMap.get("RETDESC"));
+
+        } catch (Exception e) {
+            log.error("Error mapping XML to DTO", e);
+        }
+        
+        return result;
     }
 }
