@@ -1,9 +1,9 @@
-package com.cpbank.AML_API.models;
+package com.cpbank.AML_API.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-
 import java.util.List;
+
 @Data
 public class AMLResponse {
     @JsonProperty("RiskLevel")

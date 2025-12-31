@@ -1,8 +1,9 @@
 package com.cpbank.AML_API.services;
 
+import com.cpbank.AML_API.dto.AMLRequest;
+import com.cpbank.AML_API.dto.AMLResponse;
 import com.cpbank.AML_API.helper.ReadJson;
-import com.cpbank.AML_API.models.AMLRequest;
-import com.cpbank.AML_API.models.AMLResponse;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

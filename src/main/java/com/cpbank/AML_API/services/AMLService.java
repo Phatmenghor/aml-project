@@ -1,12 +1,24 @@
 package com.cpbank.AML_API.services;
 
-import com.cpbank.AML_API.helper.ReadJson;
-import com.cpbank.AML_API.models.AMLRequest;
-import com.cpbank.AML_API.models.AMLResponse;
+import com.cpbank.AML_API.dto.AmlUpdateRequest;
+import com.cpbank.AML_API.constant.AppConstant;
+import com.cpbank.AML_API.dto.AmlUpdateResponse;
+import com.cpbank.AML_API.dto.AMLRequest;
+import com.cpbank.AML_API.dto.AMLResponse;
+import com.cpbank.AML_API.dto.OaoDownstreamRequest;
+import com.cpbank.AML_API.dto.LosDownstreamRequest;
+import com.cpbank.AML_API.helper.XmlBuilderHelper;
+import com.cpbank.AML_API.helper.XmlParserHelper;
+import com.cpbank.AML_API.models.AmlLog;
+import com.cpbank.AML_API.repository.AmlLogRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -14,22 +26,20 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpEntity;
 import org.springframework.web.client.RestTemplate;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Collections;
+import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class AMLService {
-    Logger logger = LoggerFactory.getLogger(AMLService.class);
-    @Autowired
-    private ReadJson readJson;
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
+    private final AmlLogRepository amlLogRepository;
+    private final XmlBuilderHelper xmlBuilderHelper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${aml.org.url}")
     private String url;
@@ -37,30 +47,30 @@ public class AMLService {
     @Value("${aml.org.token}")
     private String bearerToken;
 
+    @Value("${aml.soap.url}")
+    private String amlSoapUrl;
+
+    @Value("${aml.downstream.oao.url}")
+    private String oaoUrl;
+
+    @Value("${aml.downstream.los.url}")
+    private String losUrl;
+
+    @Value("${aml.downstream.oao.api-key}")
+    private String oaoApiKey;
+
+    @Value("${aml.downstream.oao.secret-key}")
+    private String oaoSecretKey;
+
     public AMLResponse PostCustomer(AMLRequest request) throws IOException,NullPointerException {
         AMLResponse response = new AMLResponse();
         try {
-            System.out.println("b4 check");
-            boolean isBypass = readJson.readByPassAml();
-            System.out.println("after check");
-            if (isBypass) {
-                logger.info("Bypass AML check is enabled. Returning mock response...");
-
-                response.setServiceName("Intuition in endpoint aml");
-                response.setTrxnID(request.getCUSTOMER_ID());
-                response.setActionTaken(null);
-                response.setTotalRulesScore(0);
-                response.setRiskLevel("Low");
-                response.setRulesTriggered(Collections.emptyList());
-
-                return response;
-            }
-
-            ObjectMapper objectMapper = new ObjectMapper();
             String json = objectMapper.writeValueAsString(request);
-            logger.info("AML original Request : {}", json);
+            log.info("AML original Request : {}", json);
+
             HttpHeaders headers = createHeaders(bearerToken);
             HttpEntity<AMLRequest> entity = new HttpEntity<>(request,headers);
+
             String res_str = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -68,20 +78,133 @@ public class AMLService {
                     String.class)
                     .getBody();
 
-            logger.info("Hi 05");
             response = objectMapper.readValue(res_str, AMLResponse.class);
-            logger.info("AML original Response : {}", res_str);
-            logger.info("Middle Response Mapping : {} ", response);
+            log.info("AML original Response : {}", res_str);
+            log.info("Middle Response Mapping : {} ", response);
             return response;
         }catch (Exception e){
-            logger.info("Hourng 02 : {} ", e);
-
+            log.info("error exception : {} ", e);
             System.out.println(e.getMessage());
-
             return null;
         }
-
     }
+
+    public AmlUpdateResponse PutCustomer(AmlUpdateRequest request) {
+        AmlLog amlLog = initLog(request);
+        AmlUpdateResponse response = new AmlUpdateResponse();
+
+        try {
+            // 1. Call SOAP Service (Soup API) - Always happens
+            String soapResponse = sendToSoapService(request);
+            Map<String, Object> resultMap = new java.util.HashMap<>();
+            resultMap.put("soapResponse", XmlParserHelper.parseSoapXml(soapResponse));
+            response.setResult(resultMap);
+
+            // 2. Determine App Type
+            String appType = determineAppType(request.getCustomerId());
+            response.setAppType(appType);
+
+            // 3. Process Downstream (if not T24)
+            processDownstreamLogic(appType, request, response, amlLog, soapResponse);
+
+            amlLog.setStatus(AppConstant.STATUS_SUCCESS);
+        } catch (Exception e) {
+            amlLog.setStatus("FAILED");
+            amlLog.setResponseJson("Error: " + e.getMessage());
+            log.error("Error processing AML update", e);
+            throw e; 
+        } finally {
+            saveLog(amlLog, response);
+        }
+
+        return response;
+    }
+
+    private String determineAppType(String customerId) {
+        if (customerId == null || customerId.trim().isEmpty()) {
+            return AppConstant.APP_TYPE_T24; // Default fallback
+        }
+        
+        String upperId = customerId.toUpperCase().trim();
+        
+        if (upperId.startsWith(AppConstant.APP_TYPE_OAO)) {
+            return AppConstant.APP_TYPE_OAO;
+        }
+        if (upperId.startsWith("C")) {
+            return AppConstant.APP_TYPE_LOS;
+        }
+        // Covers numeric IDs (e.g., 9027533223) and any unformatted IDs
+        return AppConstant.APP_TYPE_T24; 
+    }
+
+    private String sendToSoapService(AmlUpdateRequest request) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpPost httpPost = new HttpPost(amlSoapUrl);
+            httpPost.setEntity(new StringEntity(xmlBuilderHelper.constructSoapPayload(request), ContentType.TEXT_XML));
+
+            return httpClient.execute(httpPost, response -> {
+                return new BufferedReader(new InputStreamReader(response.getEntity().getContent()))
+                        .lines().collect(Collectors.joining("\n"));
+            });
+        } catch (Exception e) {
+            return "Error calling SOAP: " + e.getMessage();
+        }
+    }
+
+    private String getDownstreamUrl(String appType) {
+        if (AppConstant.APP_TYPE_OAO.equals(appType)) {
+            return oaoUrl;
+        }
+        return losUrl;
+    }
+
+    private String executeDownstreamCall(String url, AmlUpdateRequest request) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpPost httpPost = new HttpPost(url);
+            String jsonBody = buildDownstreamJsonBody(url, request);
+
+            isAccountOnline(url, httpPost);
+
+            httpPost.setEntity(new StringEntity(jsonBody, ContentType.APPLICATION_JSON));
+
+            return httpClient.execute(httpPost, response -> {
+                return new BufferedReader(new InputStreamReader(response.getEntity().getContent()))
+                        .lines().collect(Collectors.joining("\n"));
+            });
+        } catch (Exception e) {
+            return "Error calling downstream: " + e.getMessage();
+        }
+    }
+
+    private void isAccountOnline(String url, HttpPost httpPost) {
+        if (isAccountOnlineUrl(url)) {
+            if (oaoApiKey == null || oaoApiKey.trim().isEmpty() || oaoSecretKey == null || oaoSecretKey.trim().isEmpty()) {
+                throw new IllegalStateException("OAO Configuration Error: Missing API Key or Secret Key");
+            }
+            httpPost.addHeader(AppConstant.HEADER_X_API_KEY, oaoApiKey);
+            httpPost.addHeader(AppConstant.HEADER_X_SECRET_KEY, oaoSecretKey);
+        }
+    }
+
+    private String buildDownstreamJsonBody(String url, AmlUpdateRequest request) {
+        try {
+            if (isAccountOnlineUrl(url)) {
+                OaoDownstreamRequest oaoRequest = new OaoDownstreamRequest(request.getCustomerId(), "aml-springboot");
+                return objectMapper.writeValueAsString(oaoRequest);
+            } else {
+                LosDownstreamRequest losRequest = new LosDownstreamRequest(request.getCustomerId(), "Processed");
+                return objectMapper.writeValueAsString(losRequest);
+            }
+        } catch (Exception e) {
+            log.error("Error building downstream JSON body", e);
+            return "{}"; // Should ideally throw or handle upstream
+        }
+    }
+
+    private boolean isAccountOnlineUrl(String url) {
+        return url.equals(oaoUrl);
+    }
+
     private HttpHeaders createHeaders(String bearerToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -92,5 +215,42 @@ public class AMLService {
         }
 
         return headers;
+    }
+
+    private AmlLog initLog(AmlUpdateRequest request) {
+        AmlLog amlLog = new AmlLog();
+        try {
+            amlLog.setRequestJson(objectMapper.writeValueAsString(request));
+        } catch (Exception e) {
+            log.error("Error standardizing request json", e);
+        }
+        return amlLog;
+    }
+
+    private void processDownstreamLogic(String appType, AmlUpdateRequest request, AmlUpdateResponse response, AmlLog amlLog, String soapResponse) {
+        if (AppConstant.APP_TYPE_T24.equals(appType)) {
+             response.setStatus(AppConstant.STATUS_SUCCESS);
+             response.setMessage("Processed successfully via SOAP (T24).");
+             response.setAppResponse(AppConstant.STATUS_SUCCESS);
+        } else {
+             // OAO or LOS - Call Downstream
+             String downstreamUrl = getDownstreamUrl(appType);
+             String downstreamResp = executeDownstreamCall(downstreamUrl, request); 
+             
+             response.setStatus(AppConstant.STATUS_SUCCESS);
+             response.setMessage("Processed successfully.");
+             response.setAppResponse(AppConstant.STATUS_SUCCESS); 
+             
+             amlLog.setResponseJson("Downstream: " + downstreamResp + " | SOAP: " + soapResponse);
+        }
+    }
+
+    private void saveLog(AmlLog amlLog, AmlUpdateResponse response) {
+        try {
+            if (amlLog.getResponseJson() == null) amlLog.setResponseJson(objectMapper.writeValueAsString(response));
+            amlLogRepository.save(amlLog);
+        } catch (Exception e) {
+            log.error("Error saving log", e);
+        }
     }
 }

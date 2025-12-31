@@ -1,40 +1,35 @@
 package com.cpbank.AML_API.Controller;
 
-import com.cpbank.AML_API.helper.ReadJson;
-import com.cpbank.AML_API.models.AMLRequest;
-import com.cpbank.AML_API.models.AMLResponse;
+import com.cpbank.AML_API.dto.AmlUpdateRequest;
+import com.cpbank.AML_API.dto.AmlUpdateResponse;
+import com.cpbank.AML_API.dto.AMLRequest;
+import com.cpbank.AML_API.dto.AMLResponse;
 import com.cpbank.AML_API.services.AMLService;
-import com.cpbank.AML_API.services.CheckAmlService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api")
 @Slf4j
+@RequiredArgsConstructor
+@RequestMapping("/api")
 public class AMLController {
-    @Autowired
-    private AMLService amlService;
-    @Autowired
-    private CheckAmlService checkAmlService;
 
-    @Value("${aml.org.token}")
-    private String bearerToken;
+
+    private final AMLService amlService;
 
     @PostMapping("/aml")
-    public ResponseEntity<?> getRiskLevel(@RequestBody AMLRequest request,
-                                          HttpServletRequest httpRequest) {
+    public ResponseEntity<AMLResponse> getRiskLevel(@RequestBody AMLRequest request,
+                                                    HttpServletRequest httpRequest) {
         try {
             // Log authentication info
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -48,77 +43,15 @@ public class AMLController {
         } catch (Exception e) {
             log.error("Error processing AML request for customer: {}, Error: {}",
                     request.getCUSTOMER_ID(), e.getMessage(), e);
-
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("timestamp", LocalDateTime.now().toString());
-            errorResponse.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-            errorResponse.put("error", "Internal Server Error");
-            errorResponse.put("message", "An unexpected error occurred while processing your request");
-            errorResponse.put("path", httpRequest.getRequestURI());
-            errorResponse.put("method", httpRequest.getMethod());
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 
-    @PostMapping("/aml-check")
-    public ResponseEntity<?> checkAml(
-            @RequestBody AMLRequest request,
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
-            HttpServletRequest httpRequest) {
-
-        try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                log.warn("Missing or invalid Authorization header for AML check");
-
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("timestamp", LocalDateTime.now().toString());
-                errorResponse.put("status", HttpStatus.UNAUTHORIZED.value());
-                errorResponse.put("error", "Unauthorized");
-                errorResponse.put("message", "Authentication failed: Invalid or missing Bearer token");
-                errorResponse.put("path", httpRequest.getRequestURI());
-                errorResponse.put("method", httpRequest.getMethod());
-
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
-            }
-
-            String tokenFromHeader = authHeader.substring(7);
-
-            if (!tokenFromHeader.equals(bearerToken)) {
-                log.warn("Invalid Bearer token provided for AML check");
-
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("timestamp", LocalDateTime.now().toString());
-                errorResponse.put("status", HttpStatus.UNAUTHORIZED.value());
-                errorResponse.put("error", "Unauthorized");
-                errorResponse.put("message", "Authentication failed: Invalid Bearer token");
-                errorResponse.put("path", httpRequest.getRequestURI());
-                errorResponse.put("method", httpRequest.getMethod());
-
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
-            }
-
-            AMLResponse response = checkAmlService.PostCustomer(request, tokenFromHeader);
-            log.info("AML response generated successfully for customer: {}", request.getCUSTOMER_ID());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Error processing AML request for customer: {}, Error: {}",
-                    request.getCUSTOMER_ID(), e.getMessage(), e);
-
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("timestamp", LocalDateTime.now().toString());
-            errorResponse.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-            errorResponse.put("error", "Internal Server Error");
-            errorResponse.put("message", "An unexpected error occurred while processing your request");
-            errorResponse.put("path", httpRequest.getRequestURI());
-            errorResponse.put("method", httpRequest.getMethod());
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
+    @PostMapping("/aml-update")
+    public ResponseEntity<AmlUpdateResponse> AmlUpdate(@RequestBody AmlUpdateRequest request) {
+        AmlUpdateResponse response = amlService.PutCustomer(request);
+        return ResponseEntity.ok(response);
     }
-
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
