@@ -5,6 +5,8 @@ import com.cpbank.AML_API.constant.AppConstant;
 import com.cpbank.AML_API.dto.AmlUpdateResponse;
 import com.cpbank.AML_API.dto.AMLRequest;
 import com.cpbank.AML_API.dto.AMLResponse;
+import com.cpbank.AML_API.dto.OaoDownstreamRequest;
+import com.cpbank.AML_API.dto.LosDownstreamRequest;
 import com.cpbank.AML_API.helper.XmlBuilderHelper;
 import com.cpbank.AML_API.helper.XmlParserHelper;
 import com.cpbank.AML_API.model.AmlLog;
@@ -185,10 +187,17 @@ public class AMLService {
     }
 
     private String buildDownstreamJsonBody(String url, AmlUpdateRequest request) {
-        if (isAccountOnlineUrl(url)) {
-            return String.format("{\"oao\": \"%s\", \"updateFrom\": \"AML\"}", request.getCustomerId());
-        } else {
-            return String.format("{\"customerId\": \"%s\", \"status\": \"Processed\"}", request.getCustomerId());
+        try {
+            if (isAccountOnlineUrl(url)) {
+                OaoDownstreamRequest oaoRequest = new OaoDownstreamRequest(request.getCustomerId(), "aml-springboot");
+                return objectMapper.writeValueAsString(oaoRequest);
+            } else {
+                LosDownstreamRequest losRequest = new LosDownstreamRequest(request.getCustomerId(), "Processed");
+                return objectMapper.writeValueAsString(losRequest);
+            }
+        } catch (Exception e) {
+            log.error("Error building downstream JSON body", e);
+            return "{}"; // Should ideally throw or handle upstream
         }
     }
 
