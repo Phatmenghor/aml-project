@@ -1,6 +1,6 @@
 package com.cpbank.AML_API.helper;
 
-import com.cpbank.AML_API.model.AmlUpdateRequest;
+import com.cpbank.AML_API.dto.AmlUpdateRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

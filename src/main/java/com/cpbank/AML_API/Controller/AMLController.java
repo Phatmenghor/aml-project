@@ -1,32 +1,31 @@
 package com.cpbank.AML_API.Controller;
 
-import com.cpbank.AML_API.model.AmlUpdateRequest;
-import com.cpbank.AML_API.model.AmlUpdateResponse;
-import com.cpbank.AML_API.model.AMLRequest;
-import com.cpbank.AML_API.model.AMLResponse;
+import com.cpbank.AML_API.dto.AmlUpdateRequest;
+import com.cpbank.AML_API.dto.AmlUpdateResponse;
+import com.cpbank.AML_API.dto.AMLRequest;
+import com.cpbank.AML_API.dto.AMLResponse;
 import com.cpbank.AML_API.services.AMLService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
+@Slf4j
+@RequiredArgsConstructor
 @RequestMapping("/api")
 public class AMLController {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AMLController.class);
 
-    @Autowired
-    private AMLService amlService;
+    private final AMLService amlService;
 
     @PostMapping("/aml")
     public ResponseEntity<AMLResponse> getRiskLevel(@RequestBody AMLRequest request,
@@ -50,7 +49,7 @@ public class AMLController {
 
     @PostMapping("/aml-update")
     public ResponseEntity<AmlUpdateResponse> AmlUpdate(@RequestBody AmlUpdateRequest request) {
-        AmlUpdateResponse response = amlService.processAmlUpdate(request);
+        AmlUpdateResponse response = amlService.PutCustomer(request);
         return ResponseEntity.ok(response);
     }
 
