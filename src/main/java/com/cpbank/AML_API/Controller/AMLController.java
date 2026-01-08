@@ -31,7 +31,6 @@ public class AMLController {
     public ResponseEntity<AMLResponse> getRiskLevel(@RequestBody AMLRequest request,
                                                     HttpServletRequest httpRequest) {
         try {
-            // Log authentication info
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             log.info("AML API accessed by user: {}", auth.getName());
             log.info("Request received from IP: {}", getClientIpAddress(httpRequest));

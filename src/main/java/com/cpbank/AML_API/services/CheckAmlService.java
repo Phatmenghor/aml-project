@@ -60,7 +60,6 @@ public class CheckAmlService {
             }
 
 
-
             ObjectMapper objectMapper = new ObjectMapper();
             String json = objectMapper.writeValueAsString(request);
 

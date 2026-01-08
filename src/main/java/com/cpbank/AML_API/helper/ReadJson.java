@@ -4,14 +4,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import java.io.File;
 import java.io.InputStream;
+
 @Component
-public  class ReadJson {
+public class ReadJson {
 
     @Value("${config.json.path:classpath:conf.json}")
-    private  String conf;
-
+    private String conf;
 
 
     public boolean readByPassAml() {
@@ -48,7 +49,6 @@ public  class ReadJson {
 
         return byPassAml;
     }
-
 
 
 }

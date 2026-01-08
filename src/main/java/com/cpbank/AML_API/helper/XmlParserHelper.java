@@ -25,7 +25,7 @@ public class XmlParserHelper {
 
             Map<String, Object> resultMap = new HashMap<>();
             parseNode(doc.getDocumentElement(), resultMap);
-            
+
             // Auto-unwrap SOAP Envelope and Body if present
             if (resultMap.size() == 1) {
                 // Check for Envelope
@@ -40,7 +40,7 @@ public class XmlParserHelper {
                     }
                 }
             }
-            
+
             return resultMap;
 
         } catch (Exception e) {
@@ -55,7 +55,7 @@ public class XmlParserHelper {
     private static void parseNode(Node node, Map<String, Object> parentMap) {
         if (node.getNodeType() == Node.ELEMENT_NODE) {
             String nodeName = node.getLocalName(); // Ignore namespace prefix for JSON keys
-            if(nodeName == null) nodeName = node.getNodeName();
+            if (nodeName == null) nodeName = node.getNodeName();
 
             Map<String, Object> childMap = new HashMap<>();
 
@@ -67,9 +67,9 @@ public class XmlParserHelper {
                     // Avoid xmlns attributes if possible, or include them. 
                     // User only cared about "id", so let's include all non-namespace defs or valid ones.
                     String attrName = attr.getNodeName();
-                     // Filter out xmlns definition if strictly needed, but "id" is simple
+                    // Filter out xmlns definition if strictly needed, but "id" is simple
                     if (!attrName.startsWith("xmlns:")) {
-                         childMap.put(attrName, attr.getNodeValue());
+                        childMap.put(attrName, attr.getNodeValue());
                     }
                 }
             }
@@ -77,19 +77,19 @@ public class XmlParserHelper {
             // Check if it has child elements
             if (hasChildElements(node)) {
                 NodeList children = node.getChildNodes();
-                
+
                 for (int i = 0; i < children.getLength(); i++) {
                     parseNode(children.item(i), childMap);
                 }
-                
+
                 // Add to parent
                 addToParent(parentMap, nodeName, childMap);
 
             } else {
                 // Text content
                 String text = node.getTextContent();
-                if(text != null) text = text.trim();
-                
+                if (text != null) text = text.trim();
+
                 if (!childMap.isEmpty()) {
                     // Node has attributes but only text content children (mixed content or just text+attributes)
                     // If it has text content, we might need a special key for it, e.g., "value" or "_text"
@@ -98,14 +98,14 @@ public class XmlParserHelper {
                     }
                     addToParent(parentMap, nodeName, childMap);
                 } else {
-                     if(!text.isEmpty()){
-                         addToParent(parentMap, nodeName, text);
-                     }
+                    if (!text.isEmpty()) {
+                        addToParent(parentMap, nodeName, text);
+                    }
                 }
             }
         }
     }
-    
+
     // Robust insertion to handle arrays/lists in XML
     private static void addToParent(Map<String, Object> map, String key, Object value) {
         if (map.containsKey(key)) {

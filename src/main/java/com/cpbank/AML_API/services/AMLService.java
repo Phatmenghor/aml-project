@@ -257,8 +257,8 @@ public class AMLService {
         }
     }
 
-    private com.cpbank.AML_API.dto.AmlUpdateResult mapToAmlUpdateResult(Map<String, Object> map) {
-        com.cpbank.AML_API.dto.AmlUpdateResult result = new com.cpbank.AML_API.dto.AmlUpdateResult();
+    private AmlUpdateResult mapToAmlUpdateResult(Map<String, Object> map) {
+       AmlUpdateResult result = new AmlUpdateResult();
         
         try {
             // Traverse to find TUWSAMLSRVHNDLType

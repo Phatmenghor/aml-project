@@ -6,8 +6,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class AmlApiApplication {
 
-//	heryyyyyyyy gfksfdakgsd gfasdhkak dakjfhgkdsf kdsmafbjsakdgaskhfdsahdfhdsdf
-
 	static {
 		// Disable SNI before anything else loads
 		System.setProperty("jsse.enableSNIExtension", "false");
