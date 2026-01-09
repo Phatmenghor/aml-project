@@ -1,7 +1,6 @@
 package com.cpbank.AML_API.dto;
 
 import lombok.Data;
-import com.cpbank.AML_API.dto.AmlUpdateResult;
 
 @Data
 public class AmlUpdateResponse {

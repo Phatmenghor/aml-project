@@ -1,5 +1,6 @@
 package com.cpbank.AML_API.config;
 
+import com.cpbank.AML_API.utils.ResponseUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -20,9 +21,6 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -40,7 +38,6 @@ public class SecurityConfig {
                 .csrf().disable()
                 .authorizeRequests()
                 .antMatchers("/api/aml-check").permitAll()
-
                 .antMatchers("/api/aml").authenticated()
                 .anyRequest().permitAll()
                 .and()
@@ -77,16 +74,10 @@ public class SecurityConfig {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
 
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("timestamp", LocalDateTime.now().toString());
-            errorResponse.put("status", HttpStatus.UNAUTHORIZED.value());
-            errorResponse.put("error", "Unauthorized");
-            errorResponse.put("message", "Authentication failed: Invalid username or password");
-            errorResponse.put("path", request.getRequestURI());
-            errorResponse.put("method", request.getMethod());
-
             ObjectMapper mapper = new ObjectMapper();
-            response.getWriter().write(mapper.writeValueAsString(errorResponse));
+            response.getWriter().write(mapper.writeValueAsString(
+                ResponseUtils.buildUnauthorizedResponse("Invalid username or password", request)
+            ));
         };
     }
 
@@ -98,16 +89,10 @@ public class SecurityConfig {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setStatus(HttpStatus.FORBIDDEN.value());
 
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("timestamp", LocalDateTime.now().toString());
-            errorResponse.put("status", HttpStatus.FORBIDDEN.value());
-            errorResponse.put("error", "Forbidden");
-            errorResponse.put("message", "Access denied: Insufficient privileges");
-            errorResponse.put("path", request.getRequestURI());
-            errorResponse.put("method", request.getMethod());
-
             ObjectMapper mapper = new ObjectMapper();
-            response.getWriter().write(mapper.writeValueAsString(errorResponse));
+            response.getWriter().write(mapper.writeValueAsString(
+                ResponseUtils.buildErrorResponse(HttpStatus.FORBIDDEN, "Insufficient privileges", request)
+            ));
         };
     }
 }
