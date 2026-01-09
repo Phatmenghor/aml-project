@@ -43,7 +43,7 @@ public class AMLController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/health")
+    @PostMapping("/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         Map<String, Object> health = new HashMap<>();
         health.put("status", "UP");
